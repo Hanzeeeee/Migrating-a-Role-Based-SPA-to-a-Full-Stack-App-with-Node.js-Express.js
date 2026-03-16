@@ -1,0 +1,103 @@
+
+async function login(username, password) {
+    try {
+        const response = await fetch('http://localhost:3000/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+         
+            localStorage.setItem('user', JSON.stringify({
+                username: data.username,
+                role: data.role,
+                token: data.token
+            }));
+
+            
+            updateNavbar();
+            redirectAfterLogin(data);
+        } else {
+            alert('Login failed: ' + data.error);
+        }
+
+    } catch (error) {
+        alert('Network error');
+    }
+}
+
+function getAuthHeader() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = user?.token;
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+async function loadAdminDashboard() {
+    try {
+        const res = await fetch('http://localhost:3000/api/admin', { 
+            headers: { ...getAuthHeader() }
+        });
+
+        const contentEl = document.getElementById('content') || document.getElementById('employees-content');
+
+        if (res.ok) {
+            const data = await res.json();
+            if(contentEl) contentEl.innerText = data.message;
+        } else {
+            if(contentEl) contentEl.innerText = 'Access denied';
+        }
+    } catch (error) {
+        if(contentEl) contentEl.innerText = 'Network error';
+    }
+}
+
+function updateNavbar() {
+    const user = JSON.parse(localStorage.getItem('user'));
+
+    document.querySelectorAll('.role-logged-in').forEach(el => el.style.display = user ? 'block' : 'none');
+    document.querySelectorAll('.role-logged-out').forEach(el => el.style.display = user ? 'none' : 'block');
+    document.querySelectorAll('.role-admin').forEach(el => {
+        el.style.display = user?.role === 'admin' ? 'block' : 'none';
+    });
+
+    const usernameDisplay = document.getElementById('username-display');
+    if (usernameDisplay && user) usernameDisplay.innerText = user.username || 'User';
+}
+
+function logout() {
+    localStorage.removeItem('user');
+    updateNavbar();
+    window.location.hash = '#/login';
+}
+
+function redirectAfterLogin(user) {
+    if(user.role === 'admin') {
+        window.location.hash = '#/employees';
+        loadAdminDashboard();
+    } else {
+        window.location.hash = '#/profile';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    updateNavbar();
+
+    
+    const logoutBtn = document.getElementById('logout-btn');
+    if(logoutBtn) logoutBtn.addEventListener('click', logout);
+
+
+    const loginForm = document.getElementById('login-form');
+    if(loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            login(username, password);
+        });
+    }
+});
