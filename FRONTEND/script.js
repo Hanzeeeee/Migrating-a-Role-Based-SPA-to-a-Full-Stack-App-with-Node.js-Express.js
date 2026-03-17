@@ -15,14 +15,10 @@ function showToast(message, type) {
     toast.className = 'toast ' + type;
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(function() {
-        toast.classList.add('show');
-    }, 10);
-    setTimeout(function() {
+    setTimeout(function () { toast.classList.add('show'); }, 10);
+    setTimeout(function () {
         toast.classList.remove('show');
-        setTimeout(function() {
-            toast.remove();
-        }, 300);
+        setTimeout(function () { toast.remove(); }, 300);
     }, 3000);
 }
 
@@ -61,8 +57,6 @@ function seedDefaultData() {
         requests: []
     };
     saveToStorage();
-    console.log('✅ Default data created');
-    console.log('📧 Admin login: admin@example.com / Password123!');
 }
 
 function saveToStorage() {
@@ -72,72 +66,9 @@ function saveToStorage() {
         console.error('Error saving data:', e);
     }
 }
-
-async function handleRegister(e) {
-    e.preventDefault();
-    const firstName = document.getElementById('reg-firstname').value;
-    const lastName = document.getElementById('reg-lastname').value;
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
-    try {
-        const res = await fetch('http://localhost:3000/api/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: email, password, role: 'user' })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Registration failed');
-        showToast('Registration successful! Please login.', 'success');
-        navigateTo('#/login');
-    } catch (err) {
-        showToast(err.message, 'error');
-    }
-}
-
-function handleVerify() {
-    const email = localStorage.getItem('unverified_email');
-    if (!email) {
-        showToast('No email to verify', 'error');
-        return;
-    }
-    const account = window.db.accounts.find(function(acc) { return acc.email === email; });
-    if (account) {
-        account.verified = true;
-        saveToStorage();
-        localStorage.removeItem('unverified_email');
-        showToast('Email verified! You can login now.', 'success');
-        navigateTo('#/login');
-    }
-}
-
-async function handleLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    try {
-        const res = await fetch('http://localhost:3000/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: email, password })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Login failed');
-        sessionStorage.setItem('authToken', data.token);
-        setAuthState(true, { firstName: data.username, lastName: '', role: data.role, email: data.username });
-        showToast(`Welcome, ${data.username}!`, 'success');
-        navigateTo('#/profile');
-    } catch (err) {
-        showToast(err.message, 'error');
-    }
-}
-
-function handleLogout(e) {
-    e.preventDefault();
-    localStorage.removeItem('auth_token');
-    sessionStorage.removeItem('authToken');
-    setAuthState(false);
-    showToast('Logged out successfully', 'info');
-    navigateTo('#/');
+function getAuthHeader() {
+    const token = sessionStorage.getItem('authToken');
+    return token ? { 'Authorization': 'Bearer ' + token } : {};
 }
 
 function setAuthState(isAuth, user) {
@@ -145,8 +76,10 @@ function setAuthState(isAuth, user) {
         currentUser = user;
         document.body.classList.remove('not-authenticated');
         document.body.classList.add('authenticated');
+
         const usernameDisplay = document.getElementById('username-display');
-        if (usernameDisplay) usernameDisplay.textContent = user.firstName;
+        if (usernameDisplay) usernameDisplay.textContent = user.firstName || user.username || 'User';
+
         if (user.role === 'admin') document.body.classList.add('is-admin');
         else document.body.classList.remove('is-admin');
     } else {
@@ -159,17 +92,137 @@ function setAuthState(isAuth, user) {
 async function checkAuthState() {
     const token = sessionStorage.getItem('authToken');
     if (!token) return;
+
     try {
         const res = await fetch('http://localhost:3000/api/profile', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': 'Bearer ' + token }
         });
         const data = await res.json();
+
         if (!res.ok) throw new Error(data.error || 'Session expired');
-        setAuthState(true, { firstName: data.user.username, lastName: '', role: data.user.role, email: data.user.username });
+
+        setAuthState(true, {
+            firstName: data.user.username,
+            lastName: '',
+            role: data.user.role,
+            email: data.user.username
+        });
     } catch {
         sessionStorage.removeItem('authToken');
         setAuthState(false);
     }
+}
+
+async function handleRegister(e) {
+    e.preventDefault();
+    const firstName = document.getElementById('reg-firstname').value.trim();
+    const lastName  = document.getElementById('reg-lastname').value.trim();
+    const email     = document.getElementById('reg-email').value.trim();
+    const password  = document.getElementById('reg-password').value;
+
+    try {
+        const res = await fetch('http://localhost:3000/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: email, password, role: 'user' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+        showToast('Registration successful! Please login.', 'success');
+        navigateTo('#/login');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    try {
+        const res = await fetch('http://localhost:3000/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+
+    
+        sessionStorage.setItem('authToken', data.token);
+
+        setAuthState(true, {
+            firstName: data.username,
+            lastName: '',
+            role: data.role,
+            email: data.username
+        });
+
+        showToast('Welcome, ' + data.username + '!', 'success');
+        navigateTo('#/profile');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+function handleLogout(e) {
+    e.preventDefault();
+    sessionStorage.removeItem('authToken');
+    setAuthState(false);
+    showToast('Logged out successfully', 'info');
+    navigateTo('#/');
+}
+
+function handleVerify() {
+    const email = localStorage.getItem('unverified_email');
+    if (!email) {
+        showToast('No email to verify', 'error');
+        return;
+    }
+    const account = window.db.accounts.find(function (acc) { return acc.email === email; });
+    if (account) {
+        account.verified = true;
+        saveToStorage();
+        localStorage.removeItem('unverified_email');
+        showToast('Email verified! You can login now.', 'success');
+        navigateTo('#/login');
+    }
+}
+
+function navigateTo(hash) {
+    window.location.hash = hash;
+}
+
+function handleRoute() {
+    const hash = window.location.hash || '#/';
+
+    document.querySelectorAll('.page').forEach(function (p) {
+        p.classList.remove('active');
+    });
+
+    const routes = {
+        '#/':           'home-page',
+        '#/register':   'register-page',
+        '#/verify':     'verify-email-page',
+        '#/login':      'login-page',
+        '#/profile':    'profile-page',
+        '#/accounts':   'accounts-page',
+        '#/departments':'departments-page',
+        '#/employees':  'employees-page',
+        '#/requests':   'requests-page'
+    };
+
+    const pageId = routes[hash] || 'home-page';
+    const page = document.getElementById(pageId);
+    if (page) page.classList.add('active');
+
+    if (hash === '#/profile')     renderProfile();
+    if (hash === '#/accounts')    renderAccountsList();
+    if (hash === '#/departments') renderDepartmentsList();
+    if (hash === '#/employees')   renderEmployeesList();
+    if (hash === '#/requests')    renderRequestsList();
 }
 
 function renderProfile() {
@@ -177,7 +230,7 @@ function renderProfile() {
     const content = document.getElementById('profile-content');
     if (!content) return;
     const roleClass = currentUser.role === 'admin' ? 'badge-danger' : 'badge-primary';
-    content.innerHTML = 
+    content.innerHTML =
         '<p><strong>Name:</strong> ' + (currentUser.firstName || '') + ' ' + (currentUser.lastName || '') + '</p>' +
         '<p><strong>Email:</strong> ' + currentUser.email + '</p>' +
         '<p><strong>Role:</strong> <span class="badge ' + roleClass + '">' + currentUser.role + '</span></p>' +
@@ -186,7 +239,6 @@ function renderProfile() {
         '<button class="btn btn-info" onclick="alert(\'Edit profile feature coming soon!\')">Edit Profile</button>';
 }
 
-// Accounts
 function renderAccountsList() {
     const content = document.getElementById('accounts-content');
     if (!content) return;
@@ -205,8 +257,7 @@ function renderAccountsList() {
         html += '<button class="btn btn-warning" onclick="editAccount(' + acc.id + ')">Edit</button>';
         html += '<button class="btn btn-info" onclick="resetPassword(' + acc.id + ')">Reset PW</button>';
         html += '<button class="btn btn-danger" onclick="deleteAccount(' + acc.id + ')">Delete</button>';
-        html += '</td>';
-        html += '</tr>';
+        html += '</td></tr>';
     }
     html += '</tbody></table>';
     content.innerHTML = html;
@@ -215,7 +266,7 @@ function renderAccountsList() {
 function showAddAccountForm() {
     const formDiv = document.getElementById('account-form');
     if (!formDiv) return;
-    formDiv.innerHTML = 
+    formDiv.innerHTML =
         '<div class="form-card">' +
         '<h5>Add Account</h5>' +
         '<input type="text" id="acc-fname" placeholder="First Name">' +
@@ -233,11 +284,11 @@ function saveAccount() {
     const newAcc = {
         id: window.db.accounts.length + 1,
         firstName: document.getElementById('acc-fname').value,
-        lastName: document.getElementById('acc-lname').value,
-        email: document.getElementById('acc-email').value,
-        password: document.getElementById('acc-password').value,
-        role: document.getElementById('acc-role').value,
-        verified: document.getElementById('acc-verified').checked
+        lastName:  document.getElementById('acc-lname').value,
+        email:     document.getElementById('acc-email').value,
+        password:  document.getElementById('acc-password').value,
+        role:      document.getElementById('acc-role').value,
+        verified:  document.getElementById('acc-verified').checked
     };
     window.db.accounts.push(newAcc);
     saveToStorage();
@@ -246,11 +297,11 @@ function saveAccount() {
 }
 
 function editAccount(id) {
-    const acc = window.db.accounts.find(function(a) { return a.id === id; });
+    const acc = window.db.accounts.find(function (a) { return a.id === id; });
     if (!acc) return;
     const formDiv = document.getElementById('account-form');
     if (!formDiv) return;
-    formDiv.innerHTML = 
+    formDiv.innerHTML =
         '<div class="form-card">' +
         '<h5>Edit Account</h5>' +
         '<input type="text" id="edit-fname" value="' + acc.firstName + '">' +
@@ -267,13 +318,13 @@ function editAccount(id) {
 }
 
 function updateAccount(id) {
-    const acc = window.db.accounts.find(function(a) { return a.id === id; });
+    const acc = window.db.accounts.find(function (a) { return a.id === id; });
     if (!acc) return;
     acc.firstName = document.getElementById('edit-fname').value;
-    acc.lastName = document.getElementById('edit-lname').value;
-    acc.email = document.getElementById('edit-email').value;
-    acc.role = document.getElementById('edit-role').value;
-    acc.verified = document.getElementById('edit-verified').checked;
+    acc.lastName  = document.getElementById('edit-lname').value;
+    acc.email     = document.getElementById('edit-email').value;
+    acc.role      = document.getElementById('edit-role').value;
+    acc.verified  = document.getElementById('edit-verified').checked;
     saveToStorage();
     showToast('Account updated successfully!', 'success');
     renderAccountsList();
@@ -282,7 +333,7 @@ function updateAccount(id) {
 function resetPassword(id) {
     const newPassword = prompt('Enter new password (min 6 characters):');
     if (newPassword && newPassword.length >= 6) {
-        const acc = window.db.accounts.find(function(a) { return a.id === id; });
+        const acc = window.db.accounts.find(function (a) { return a.id === id; });
         if (acc) {
             acc.password = newPassword;
             saveToStorage();
@@ -299,14 +350,13 @@ function deleteAccount(id) {
         return;
     }
     if (confirm('Are you sure you want to delete this account?')) {
-        window.db.accounts = window.db.accounts.filter(function(a) { return a.id !== id; });
+        window.db.accounts = window.db.accounts.filter(function (a) { return a.id !== id; });
         saveToStorage();
         showToast('Account deleted successfully!', 'success');
         renderAccountsList();
     }
 }
 
-// Departments
 function renderDepartmentsList() {
     const content = document.getElementById('departments-content');
     if (!content) return;
@@ -315,10 +365,7 @@ function renderDepartmentsList() {
     html += '<table><thead><tr><th>Name</th><th>Description</th><th>Actions</th></tr></thead><tbody>';
     for (let i = 0; i < window.db.departments.length; i++) {
         const dept = window.db.departments[i];
-        html += '<tr>';
-        html += '<td>' + dept.name + '</td>';
-        html += '<td>' + dept.description + '</td>';
-        html += '<td>';
+        html += '<tr><td>' + dept.name + '</td><td>' + dept.description + '</td><td>';
         html += '<button class="btn btn-warning" onclick="editDept(' + dept.id + ')">Edit</button>';
         html += '<button class="btn btn-danger" onclick="deleteDept(' + dept.id + ')">Delete</button>';
         html += '</td></tr>';
@@ -330,7 +377,8 @@ function renderDepartmentsList() {
 function showAddDeptForm() {
     const formDiv = document.getElementById('dept-form');
     if (!formDiv) return;
-    formDiv.innerHTML = '<div class="form-card">' +
+    formDiv.innerHTML =
+        '<div class="form-card">' +
         '<h5>Add Department</h5>' +
         '<input type="text" id="dept-name" placeholder="Name">' +
         '<textarea id="dept-desc" placeholder="Description" rows="3"></textarea>' +
@@ -342,7 +390,7 @@ function showAddDeptForm() {
 function saveDept() {
     const newDept = {
         id: window.db.departments.length + 1,
-        name: document.getElementById('dept-name').value,
+        name:        document.getElementById('dept-name').value,
         description: document.getElementById('dept-desc').value
     };
     window.db.departments.push(newDept);
@@ -352,11 +400,12 @@ function saveDept() {
 }
 
 function editDept(id) {
-    const dept = window.db.departments.find(function(d) { return d.id === id; });
+    const dept = window.db.departments.find(function (d) { return d.id === id; });
     if (!dept) return;
     const formDiv = document.getElementById('dept-form');
     if (!formDiv) return;
-    formDiv.innerHTML = '<div class="form-card">' +
+    formDiv.innerHTML =
+        '<div class="form-card">' +
         '<h5>Edit Department</h5>' +
         '<input type="text" id="edit-dept-name" value="' + dept.name + '">' +
         '<textarea id="edit-dept-desc" rows="3">' + dept.description + '</textarea>' +
@@ -366,9 +415,9 @@ function editDept(id) {
 }
 
 function updateDept(id) {
-    const dept = window.db.departments.find(function(d) { return d.id === id; });
+    const dept = window.db.departments.find(function (d) { return d.id === id; });
     if (!dept) return;
-    dept.name = document.getElementById('edit-dept-name').value;
+    dept.name        = document.getElementById('edit-dept-name').value;
     dept.description = document.getElementById('edit-dept-desc').value;
     saveToStorage();
     showToast('Department updated successfully!', 'success');
@@ -377,14 +426,13 @@ function updateDept(id) {
 
 function deleteDept(id) {
     if (confirm('Are you sure you want to delete this department?')) {
-        window.db.departments = window.db.departments.filter(function(d) { return d.id !== id; });
+        window.db.departments = window.db.departments.filter(function (d) { return d.id !== id; });
         saveToStorage();
         showToast('Department deleted successfully!', 'success');
         renderDepartmentsList();
     }
 }
 
-// Employees
 function renderEmployeesList() {
     const content = document.getElementById('employees-content');
     if (!content) return;
@@ -392,9 +440,9 @@ function renderEmployeesList() {
     html += '<div id="emp-form"></div>';
     html += '<table><thead><tr><th>ID</th><th>User</th><th>Position</th><th>Department</th><th>Hire Date</th><th>Actions</th></tr></thead><tbody>';
     for (let i = 0; i < window.db.employees.length; i++) {
-        const emp = window.db.employees[i];
-        const user = window.db.accounts.find(a => a.id === emp.userId);
-        const dept = window.db.departments.find(d => d.id === emp.deptId);
+        const emp  = window.db.employees[i];
+        const user = window.db.accounts.find(function (a) { return a.id === emp.userId; });
+        const dept = window.db.departments.find(function (d) { return d.id === emp.deptId; });
         html += '<tr>';
         html += '<td>' + emp.empId + '</td>';
         html += '<td>' + (user ? user.email : 'N/A') + '</td>';
@@ -414,16 +462,15 @@ function showAddEmpForm() {
     const formDiv = document.getElementById('emp-form');
     if (!formDiv) return;
     let userOptions = '<option value="">Select User</option>';
-    for (let i = 0; i < window.db.accounts.length; i++) {
-        const acc = window.db.accounts[i];
+    window.db.accounts.forEach(function (acc) {
         userOptions += '<option value="' + acc.id + '">' + acc.email + '</option>';
-    }
+    });
     let deptOptions = '<option value="">Select Department</option>';
-    for (let i = 0; i < window.db.departments.length; i++) {
-        const dept = window.db.departments[i];
+    window.db.departments.forEach(function (dept) {
         deptOptions += '<option value="' + dept.id + '">' + dept.name + '</option>';
-    }
-    formDiv.innerHTML = '<div class="form-card">' +
+    });
+    formDiv.innerHTML =
+        '<div class="form-card">' +
         '<h5>Add Employee</h5>' +
         '<input type="text" id="emp-id" placeholder="Employee ID">' +
         '<select id="emp-user">' + userOptions + '</select>' +
@@ -437,11 +484,11 @@ function showAddEmpForm() {
 
 function saveEmp() {
     const newEmp = {
-        id: window.db.employees.length + 1,
-        empId: document.getElementById('emp-id').value,
-        userId: parseInt(document.getElementById('emp-user').value),
+        id:       window.db.employees.length + 1,
+        empId:    document.getElementById('emp-id').value,
+        userId:   parseInt(document.getElementById('emp-user').value),
         position: document.getElementById('emp-position').value,
-        deptId: parseInt(document.getElementById('emp-dept').value),
+        deptId:   parseInt(document.getElementById('emp-dept').value),
         hireDate: document.getElementById('emp-hiredate').value
     };
     window.db.employees.push(newEmp);
@@ -451,21 +498,20 @@ function saveEmp() {
 }
 
 function editEmp(id) {
-    const emp = window.db.employees.find(function(e) { return e.id === id; });
+    const emp = window.db.employees.find(function (e) { return e.id === id; });
     if (!emp) return;
     const formDiv = document.getElementById('emp-form');
     if (!formDiv) return;
     let userOptions = '<option value="">Select User</option>';
-    for (let i = 0; i < window.db.accounts.length; i++) {
-        const acc = window.db.accounts[i];
+    window.db.accounts.forEach(function (acc) {
         userOptions += '<option value="' + acc.id + '"' + (acc.id === emp.userId ? ' selected' : '') + '>' + acc.email + '</option>';
-    }
+    });
     let deptOptions = '<option value="">Select Department</option>';
-    for (let i = 0; i < window.db.departments.length; i++) {
-        const dept = window.db.departments[i];
+    window.db.departments.forEach(function (dept) {
         deptOptions += '<option value="' + dept.id + '"' + (dept.id === emp.deptId ? ' selected' : '') + '>' + dept.name + '</option>';
-    }
-    formDiv.innerHTML = '<div class="form-card">' +
+    });
+    formDiv.innerHTML =
+        '<div class="form-card">' +
         '<h5>Edit Employee</h5>' +
         '<input type="text" id="edit-emp-id" value="' + emp.empId + '">' +
         '<select id="edit-emp-user">' + userOptions + '</select>' +
@@ -478,12 +524,12 @@ function editEmp(id) {
 }
 
 function updateEmp(id) {
-    const emp = window.db.employees.find(function(e) { return e.id === id; });
+    const emp = window.db.employees.find(function (e) { return e.id === id; });
     if (!emp) return;
-    emp.empId = document.getElementById('edit-emp-id').value;
-    emp.userId = parseInt(document.getElementById('edit-emp-user').value);
+    emp.empId    = document.getElementById('edit-emp-id').value;
+    emp.userId   = parseInt(document.getElementById('edit-emp-user').value);
     emp.position = document.getElementById('edit-emp-position').value;
-    emp.deptId = parseInt(document.getElementById('edit-emp-dept').value);
+    emp.deptId   = parseInt(document.getElementById('edit-emp-dept').value);
     emp.hireDate = document.getElementById('edit-emp-hiredate').value;
     saveToStorage();
     showToast('Employee updated successfully!', 'success');
@@ -492,14 +538,36 @@ function updateEmp(id) {
 
 function deleteEmp(id) {
     if (confirm('Are you sure you want to delete this employee?')) {
-        window.db.employees = window.db.employees.filter(function(e) { return e.id !== id; });
+        window.db.employees = window.db.employees.filter(function (e) { return e.id !== id; });
         saveToStorage();
         showToast('Employee deleted successfully!', 'success');
         renderEmployeesList();
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+function renderRequestsList() {
+    const content = document.getElementById('requests-content');
+    if (!content) return;
+    content.innerHTML = '<p class="text-muted">No requests yet.</p>';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
     loadFromStorage();
-    checkAuthState();
+    checkAuthState().then(function () {
+        handleRoute();
+    });
+
+    window.addEventListener('hashchange', handleRoute);
+
+    const registerForm = document.getElementById('register-form');
+    if (registerForm) registerForm.addEventListener('submit', handleRegister);
+
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
+
+    const verifyBtn = document.getElementById('verify-btn');
+    if (verifyBtn) verifyBtn.addEventListener('click', handleVerify);
+
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 });

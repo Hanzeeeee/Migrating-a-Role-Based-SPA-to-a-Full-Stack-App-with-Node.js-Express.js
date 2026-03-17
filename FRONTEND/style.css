@@ -1,29 +1,26 @@
-
-.page { 
-    display: none; 
+.page {
+    display: none;
 }
 
-.page.active { 
-    display: block; 
+.page.active {
+    display: block;
 }
 
-
-body.not-authenticated .role-logged-in { 
+body.not-authenticated .role-logged-in {
     display: none !important;
 }
 
-body.authenticated .role-logged-out { 
+body.authenticated .role-logged-out {
     display: none !important;
 }
 
-.role-admin { 
+.role-admin {
     display: none !important;
 }
 
-body.is-admin .role-admin { 
+body.is-admin .role-admin {
     display: inline-block !important;
 }
-
 
 body {
     background-color: white;
@@ -32,12 +29,10 @@ body {
     padding: 0;
 }
 
-
 .navbar-brand {
     font-size: 20px;
     font-weight: bold;
 }
-
 
 h2 {
     color: black;
@@ -88,7 +83,6 @@ h2 {
 .getstart:hover {
     background-color: darkblue;
 }
-
 
 .form-container {
     max-width: 500px;
@@ -158,7 +152,6 @@ h2 {
     text-decoration: underline;
 }
 
-
 .content-box {
     margin: 20px auto;
     padding: 30px;
@@ -173,7 +166,6 @@ h2 {
     margin-left: 0;
     color: #333;
 }
-
 
 table {
     width: 100%;
@@ -197,7 +189,6 @@ table td {
 table tbody tr:hover {
     background-color: #f5f5f5;
 }
-
 
 .btn {
     padding: 8px 16px;
@@ -237,7 +228,6 @@ table tbody tr:hover {
     background-color: #6c757d;
     color: white;
 }
-
 
 .badge {
     padding: 5px 10px;
@@ -297,23 +287,10 @@ table tbody tr:hover {
     transform: translateX(0);
 }
 
-.toast.success {
-    background-color: #28a745;
-}
-
-.toast.error {
-    background-color: #dc3545;
-}
-
-.toast.warning {
-    background-color: #ffc107;
-    color: #000;
-}
-
-.toast.info {
-    background-color: #17a2b8;
-}
-
+.toast.success  { background-color: #28a745; }
+.toast.error    { background-color: #dc3545; }
+.toast.warning  { background-color: #ffc107; color: #000; }
+.toast.info     { background-color: #17a2b8; }
 
 .form-card {
     background-color: white;
@@ -345,7 +322,6 @@ table tbody tr:hover {
     margin: 10px 0 5px 0;
     font-weight: bold;
 }
-
 
 @media (max-width: 768px) {
     .notif {
